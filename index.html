@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    
+    <title>Mario Bros</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+
+    <style>
+        body {  /*referece ao estilo que o corpo do html vai ter */
+            display: flex; /*define o modelo do layout*/
+            justify-content: center;
+            align-items: center; /*deixar os itens centralizados*/
+            height: 100vh; /* define a altura do <body>*/
+            margin: 0;  /* remove qualquer margem ao redor do <body>. margin: 0 é para garantir que não haja espaço extra ao redor do elemento.*/
+        }
+    </style>
+</head>
+
+<body>
+
+    <script>
+        // captura a altura e largura total do elemento <html>
+        const height = document.documentElement.offsetHeight;
+        const width = document.documentElement.offsetWidth;
+
+        
+        var config = {
+            type: Phaser.AUTO,
+            width: width,
+            height: height,
+            physics: { //adicionando a fisica no jogo
+                default: 'arcade', //falando qual tipo de fisica 
+                arcade: {
+                    gravity: { y: 200 }, //adicona gravidade, quando menor mais lenta ela fica 
+                    debug: false //colocando false estamos tirando o contorno envolta dos corpos
+                }
+            },
+            scene: {
+                preload: preload, //falando que temos preload no nosso codigo e que ele chama preload
+                create: create,  //falando que temos create no nosso codigo e que ele chama create
+                update: update,  //falando que temos update no nosso codigo e que ele chama update 
+            }
+        };
+
+        var game = new Phaser.Game(config); //responsavel por  inicializar a vida do jogo
+
+        //dando nome as plataformas 
+        var plataforma;
+        var mario;
+        var teclado;
+        var estrelas;
+        var pontuacao = 0;
+        var placar;
+        var inimigo;
+        var mariovivo = true;
+
+        function preload() { //pega as imagens
+            this.load.image('fundo', 'assets/fundo.png');
+            this.load.image('plataforma', 'assets/plataforma.png');
+            this.load.image('mario', 'assets/mariobros.png');
+            this.load.image('estrela', 'assets/estrela.png');
+            this.load.spritesheet("inimigo", "assets/inimigo.png", { //adicionando o passarinho na tela 
+          frameWidth: 304, // largura do spritesheets
+          frameHeight: 257, });// altura do spritesheets
+        
+         
+        };
+
+        function create() { //coloca as imagnes no jogo
+            this.add.image(width / 2, height / 2, 'fundo').setScale(width / 1380);
+
+            plataforma = this.physics.add.staticGroup(); //colocando um grupo de plataformas no jogo
+            plataforma.create(600, height / 1.5, 'plataforma');
+            plataforma.create(150, height/2, 'plataforma');
+            plataforma.create(750, height/5, 'plataforma');
+            plataforma.create(390, height/4, 'plataforma');
+            plataforma.create(1140, height/3, 'plataforma');
+            plataforma.create(850, height/2, 'plataforma');
+            plataforma.create(1420, height/1.8, 'plataforma');
+            plataforma.create(80, height/1.2, 'plataforma');
+            plataforma.create(980,height/1.2, 'plataforma');
+
+          
+
+            mario = this.physics.add.sprite(900, 100, 'mario').setScale(0.1); //fisica do mairo
+            mario.setCollideWorldBounds(true); //para o mario nao sumir do mundo, para ter uma barreira para ele nao sair da tela
+            this.physics.add.collider(mario, plataforma); //para o mario colidir com  a plataforma 
+           
+
+            teclado = this.input.keyboard.createCursorKeys(); //para colocar o movimento do nosso personagem
+
+            estrelas = this.physics.add.group({ //adicionando um grupo de estrelas
+                key: 'estrela',  //define a chave associada ao sprite 
+                repeat: 11, //falando quantas estrelas vao ter (alem da primeira)
+                setXY: { x: 12, y: 0, stepX: 135 } //define a posição inicial das estrelas no grupo
+            });
+
+            estrelas.children.iterate(function (estrela) {
+                estrela.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8));
+            });
+
+            this.physics.add.collider(estrelas, plataforma); //fazendo a estrela colider com a plataforma
+            this.physics.add.overlap(mario, estrelas, collectEstrela, null, this); //overlap detecta uma sobreposição entre dois objetos ou grupos de objetos
+            //collectaEstrela sera chamado quando tiver uma sobreposição entre os dois objetos
+
+            placar = this.add.text(50, 50, 'Moedas: ' + pontuacao, { fontSize: '45px', fill: '#FFFFFF' });  //adiciondo a escrita do nosso placar
+
+            inimigo = this.physics.add.sprite(100, 300, 'inimigo').setScale(0.3); //o sprite aqui esta falando que o inimigo consegue colider pq ele ter um corpo, e esta falando onde ele vai aparecer na tela
+          
+          //criação de uma animção
+            this.anims.create({ //inicia o processe do criação
+                key: 'inimigo', //define a chave associada a animaçaõ
+                frames: this.anims.generateFrameNumbers('inimigo', {start: 0, end: 2}), // gera um array de números de quadros, começando em 0 e indo até 2. Isso significa que a animação usa os frames 0, 1 e 2 do sprite 
+                frameRate: 30, //quantos quadrados por segundo 
+                repeat: -1 //quantas vezes deve se repetir a animinação, nesse caso é infinita o -1
+
+                
+            });
+
+            inimigo.anims.play('inimigo', true); //faz com que a animaçao seja reproduzida, (true) indica que a animação deve ser repetida continuamente.
+            inimigo.setCollideWorldBounds(true); //faz com que o inimigo colida com os limites do mundo
+            inimigo.body.allowGravity = false; //para tirar a gravidade dele (inimigo), para nao ser afetado pela gravidade
+
+            this.physics.add.overlap(mario, inimigo, function(){
+                mariovivo = false //quando els se tocarem mario vivo vai ficar falso e os reclados param de funcionar 
+
+            }) //relaçao da fisica do mario com o inimigo
+        }
+
+        function update() {
+            if (teclado.left.isDown && mariovivo === true){ //verificando se a tecla da esquerda esta pressionada 
+                    mario.setVelocityX(-250); }
+
+                    else if (teclado.right.isDown && mariovivo === true) { //se a tecla da esquerda não tiver pressionada, verifique se a tecla da seta da direita esta 
+                    mario.setVelocityX(250); } //se tiver pressionada a da direita define a velocidade 
+
+
+                   
+                else {mario.setVelocityX(0)} //se nenhuma tecla tiver precionada, define a velocidade do alien como 0
+
+                if (teclado.up.isDown && mariovivo === true){ //verifica se a teclada para cima esta precionada, mariovivo verififca se a variavel é verdadeira 
+                    mario.setVelocityY(-250);} //se tiver precionada define velocidade 
+
+
+            if (inimigo.x === 1350) { //verifica se a posição do inimigo é igual a 1350
+                inimigo.ida = true, //se a linha if for verdadeira, a ida do inimigo comça para direita 
+                inimigo.setFlip (true, false), //Define a orientação do sprite do inimigo. Com true, false, o sprite é virado horizontalmente.
+                inimigo.setVisible(true), // Torna o sprite do inimigo visível.
+                rp = 100; // Atribui o valor 100 à variável rp.
+            } 
+
+        if (inimigo.x > 100 && inimigo.ida === true) { //Verifica se a posição x do inimigo é maior que 100 e se a propriedade ida é true.
+            inimigo.x -=5; //se a condição for verdadeira, diminui 5 unidades da posição x do inimigo. Isso move o inimigo para a esquerda.
+        } 
+        
+        if (inimigo.x === 100) { //verifica se a posição é igual a 1--
+            inimigo.ida = false, // Se a condição for verdadeira, atribui false à propriedade ida. Isso sugere que o inimigo está se movendo para a esquerda.
+            inimigo.setFlip (false, false), //mantido na orientação original
+            inimigo.setVisible(true), //torna inimigo visivel 
+            rp = 1350; // Atribui o valor 1350 à variável rp.
+        } 
+
+        if (inimigo.x < 1350 && inimigo.ida === false) { // Verifica se a posição x do inimigo é menor que 1350 e se a propriedade ida é false.
+            inimigo.x +=5; //se for verdadeira o inimigo se move para direita
+        }
+
+       
+
+        }
+
+        function collectEstrela(mario, estrela) {
+            estrela.disableBody(true, true); // Desativa a estrela, TRUE 1  deixa parado, TRUE 2 ele desaparece 
+
+            pontuacao += 1; // Incrementa a variável pontuacao em 1.
+            placar.setText('Moedas: ' + pontuacao); //fica atualizando o texto do placar
+        }
+    </script>
+
+</body>
+
+</html>
